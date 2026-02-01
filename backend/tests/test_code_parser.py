@@ -28,11 +28,12 @@ class Product:
     content = code_snippet.encode('utf-8')
     
     # Parse
-    tree = parser_service.parse_python_file(content)
+    result = parser_service.parse_python_file(content)
     
     # Extract
-    functions = parser_service.extract_function_names(tree)
-    classes = parser_service.extract_class_names(tree)
+    functions = parser_service.extract_function_names(result)
+    classes = parser_service.extract_class_names(result)
+    assert isinstance(result["ast"], dict)
     
     # Verify Classes
     assert "UserManager" in classes
@@ -48,10 +49,10 @@ class Product:
 
 def test_empty_content(parser_service):
     """Test parsing empty content returns empty lists."""
-    tree = parser_service.parse_python_file(b"")
+    result = parser_service.parse_python_file(b"")
     
-    functions = parser_service.extract_function_names(tree)
-    classes = parser_service.extract_class_names(tree)
+    functions = parser_service.extract_function_names(result)
+    classes = parser_service.extract_class_names(result)
     
     assert functions == []
     assert classes == []
