@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -17,6 +17,11 @@ class ChatSession(Base):
     repository = relationship("Repository", back_populates="chat_sessions")
     messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
 
+    __table_args__ = (
+        Index("ix_chat_sessions_user_id", "user_id"),
+        Index("ix_chat_sessions_repo_id", "repository_id"),
+    )
+
     def __repr__(self):
         return f"<ChatSession(id={self.id}, user_id={self.user_id}, repository_id={self.repository_id})>"
 
@@ -31,6 +36,11 @@ class ChatMessage(Base):
 
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
+
+    __table_args__ = (
+        Index("ix_chat_messages_session_id", "session_id"),
+        Index("ix_chat_messages_session_created", "session_id", "created_at"),
+    )
 
     def __repr__(self):
         return f"<ChatMessage(id={self.id}, role='{self.role}', session_id={self.session_id})>"

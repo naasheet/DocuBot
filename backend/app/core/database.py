@@ -17,6 +17,10 @@ engine = create_engine(
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# Ensure all models are registered with SQLAlchemy metadata.
+# Importing here avoids circular imports in individual model modules.
+from app import models as _models  # noqa: F401
+
 def get_db():
     db = SessionLocal()
     try:

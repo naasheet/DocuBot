@@ -1,8 +1,8 @@
 export default function Header() {
   return (
-    <header className="bg-white shadow">
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <h1 className="text-2xl font-bold">DocuBot</h1>
+    <header className="border-b border-white/10 bg-slate-950/70">
+      <div className="mx-auto w-full max-w-6xl px-6 py-4">
+        <h1 className="text-2xl font-bold text-white">DocuBot</h1>
       </div>
     </header>
   )

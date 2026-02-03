@@ -3,17 +3,33 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --foreground: 226 232 240;
+  --background: 2 6 23;
+  --accent: 94 234 212;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: rgb(var(--foreground));
+  background: radial-gradient(circle at top, rgba(94, 234, 212, 0.15), transparent 45%),
+    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.25), transparent 40%),
+    linear-gradient(160deg, rgb(2 6 23) 0%, rgb(15 23 42) 60%, rgb(15 23 42) 100%);
+  min-height: 100vh;
+}
+
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+.glass {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+pre code {
+  @apply block overflow-x-auto rounded bg-gray-900 p-3 text-sm text-gray-100;
+}
+
+code {
+  @apply rounded bg-slate-800 px-1.5 py-0.5 text-sm text-slate-100;
 }

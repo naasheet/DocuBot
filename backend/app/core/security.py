@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import hashlib
+import hmac
 from jose import jwt
 import bcrypt
 from app.config import settings
@@ -14,3 +16,15 @@ def create_access_token(data: dict) -> str:
     expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def hash_one_time_code(code: str) -> str:
+    digest = hmac.new(settings.SECRET_KEY.encode("utf-8"), code.encode("utf-8"), hashlib.sha256).hexdigest()
+    return digest
+
+
+def verify_one_time_code(code: str, hashed: str | None) -> bool:
+    if not hashed:
+        return False
+    expected = hash_one_time_code(code)
+    return hmac.compare_digest(expected, hashed)

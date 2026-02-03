@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -21,6 +21,13 @@ class Repository(Base):
     owner = relationship("User", back_populates="repositories")
     chat_sessions = relationship("ChatSession", back_populates="repository", cascade="all, delete-orphan")
     documentation = relationship("Documentation", back_populates="repository", cascade="all, delete-orphan")
+    cache_entries = relationship("RepositoryCache", back_populates="repository", cascade="all, delete-orphan")
+    files = relationship("RepositoryFile", back_populates="repository", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("ix_repositories_user_id", "user_id"),
+        Index("ix_repositories_full_name", "full_name"),
+    )
 
     def __repr__(self):
         return f"<Repository(id={self.id}, full_name='{self.full_name}', is_active={self.is_active})>"

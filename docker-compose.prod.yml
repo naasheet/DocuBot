@@ -1,0 +1,163 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: docubot-postgres
+    environment:
+      POSTGRES_DB: docubot
+      POSTGRES_USER: docubot
+      POSTGRES_PASSWORD: docubot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docubot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: &default_logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  redis:
+    image: redis:7-alpine
+    container_name: docubot-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging: *default_logging
+
+  qdrant:
+    build:
+      context: ./docker/qdrant
+      dockerfile: Dockerfile
+    image: docubot-qdrant:local
+    container_name: docubot-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default_logging
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docubot-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - ./backend/.env
+    environment:
+      - POSTGRES_SERVER=postgres
+      - REDIS_HOST=redis
+      - QDRANT_HOST=qdrant
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default_logging
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docubot-worker
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    env_file:
+      - ./backend/.env
+    environment:
+      - POSTGRES_SERVER=postgres
+      - REDIS_HOST=redis
+      - QDRANT_HOST=qdrant
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    logging: *default_logging
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: docubot-frontend
+    command: npm run start
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      HOSTNAME: "0.0.0.0"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:3000"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default_logging
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: docubot-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *default_logging
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: docubot-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    logging: *default_logging
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: docubot-cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"
+    logging: *default_logging
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: docubot-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+    logging: *default_logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  qdrant_data:
+  ollama_data:

@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -22,6 +22,10 @@ class Documentation(Base):
 
     # Relationships
     repository = relationship("Repository", back_populates="documentation")
+
+    __table_args__ = (
+        Index("ix_documentation_repo_type", "repository_id", "doc_type"),
+    )
 
     def __repr__(self):
         return f"<Documentation(id={self.id}, type='{self.doc_type}', repo_id={self.repository_id})>"

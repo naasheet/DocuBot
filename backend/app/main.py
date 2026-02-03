@@ -4,7 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.api.v1.router import api_router
+from app.core.rate_limit import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -14,6 +18,27 @@ app = FastAPI(
     description="AI-powered documentation generator",
     version="1.0.0"
 )
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; "
+            "base-uri 'none'; "
+            "form-action 'none'; "
+            "frame-ancestors 'none'"
+        )
+        return response
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Global exception handler - ensures we always return a proper response
 # instead of closing the connection unexpectedly (fixes "connection closed" errors)
@@ -39,18 +64,12 @@ async def global_exception_handler(request: Request, exc: Exception):
 # CORS - include localhost variants for API testing (curl, PowerShell, etc.)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "http://localhost",
-        "http://127.0.0.1",
-    ],
+    allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(api_router, prefix="/api/v1")
